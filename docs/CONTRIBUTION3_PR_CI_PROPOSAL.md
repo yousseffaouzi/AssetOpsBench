@@ -5,17 +5,25 @@
 - Upstream issue #632 remains open and assigned to `yousseffaouzi`.
 - Maintainer `DhavalRepo18` replied on 2026-10-14: `@yousseffaouzi, we had those but did not operationalize them. Try one.` This cleared the earlier waiting state enough to prototype a focused first version.
 - Upstream `IBM/AssetOpsBench/main` and fork `yousseffaouzi/AssetOpsBench/main` were both verified at `e844f6468c6c68b328022e7ca8e31da140842cc7` before implementation.
-- Current upstream workflows remain `secret-scan.yml`, `guard-couchdb-data.yml`, and `stale.yml`; no competing open Python smoke-workflow PR was found in the preflight search.
+- Current upstream workflows before this contribution were `secret-scan.yml`, `guard-couchdb-data.yml`, and `stale.yml`; no competing open Python smoke-workflow PR was found in the preflight search.
 - Implementation branch: `ci/add-python-smoke-workflow` in the contributor fork only.
 - Implementation commit: `cd7b97da1affed26a1694708d59df23141eaebc0` (`ci: add service-free Python smoke workflow`), DCO-signed.
 - Diff: one added file, `.github/workflows/python-smoke.yml`, 65 additions; no benchmark, scoring, data, Ruff, or roadmap file is present on the implementation branch.
 - Fork-only validation PR: `yousseffaouzi/AssetOpsBench#3` (draft).
 - Fork workflow run `38656000694` completed successfully. Checkout, uv install, `uv lock --check`, constrained smoke dependency install, and `.venv/bin/python -m pytest src/llm/tests src/servers/utilities/tests -q` all completed successfully.
 - Local preparation validated YAML parsing/structure and the required uv CLI flags. The local shell could not resolve GitHub/PyPI hosts, so no local dependency install or pytest pass is claimed.
-- Attempting to create a draft upstream PR through the connected GitHub integration returned HTTP 403 `Resource not accessible by integration`; no upstream PR was created through that integration.
-- IBM organization compatibility remains an upstream-policy question. The prototype introduces no new third-party GitHub Action: it uses the already-present `actions/checkout@v7` and installs uv with the official shell installer.
+- The connected GitHub integration could not create or mutate the upstream PR because those writes returned HTTP 403 `Resource not accessible by integration`; upstream submission was therefore performed manually through GitHub.
+- An accidental first PR, IBM/AssetOpsBench#635, was opened from the personal `contrib/assetopsbench-roadmap` branch. It was identified before review, contained only roadmap files rather than the workflow, and was closed without merge.
+- Correct upstream PR: IBM/AssetOpsBench#636, from `yousseffaouzi:ci/add-python-smoke-workflow` to `IBM/AssetOpsBench:main`.
+- PR #636 is the intended focused diff: one commit and one changed file, `.github/workflows/python-smoke.yml`.
+- IBM-side workflow run `38660302263` (`Python Smoke`) completed successfully. Its `Service-free Python smoke` job completed checkout, uv install, lock check, constrained dependency installation, and the configured pytest step successfully.
+- IBM-side existing `Secret Scan` run `38660302325` also completed successfully.
+- Commit checks on PR #636 show `Service-free Python smoke`, DCO, Gitleaks, and TruffleHog OSS all successful.
+- The successful smoke check reports one annotation, but the available GitHub integration does not expose the annotation body. No interpretation is claimed because the check itself completed successfully.
+- As of this verification, PR #636 has no maintainer comments or submitted reviews yet.
+- IBM organization compatibility is now empirically validated for this first version: the workflow was accepted and executed successfully in the upstream repository. This does not imply the check should become mandatory or that branch protection should change.
 
-Next action: submit the focused draft PR from `yousseffaouzi:ci/add-python-smoke-workflow` to `IBM/AssetOpsBench:main` using an authenticated GitHub surface that has permission, reference #632 as related work (do not use `Fixes`), then observe IBM Actions-policy behavior and maintainer feedback. Do not make the check mandatory or change branch protection without explicit maintainer direction.
+Next action: keep PR #636 focused and await maintainer review. Respond only to concrete feedback or CI changes. Do not make the check mandatory, change branch protection, broaden the suite, add Ruff, or add external-service tests without maintainer direction.
 
 ## Current state (verified on IBM/AssetOpsBench main, 2026-10-13)
 
@@ -69,4 +77,4 @@ Relevant files: `.github/workflows/secret-scan.yml`, `.github/workflows/guard-co
 
 ## Submission status
 
-Attempted upstream GitHub issue creation through the connected GitHub integration on 2026-10-13; returned `403 Resource not accessible by integration`. Submit via authenticated GitHub browser to IBM/AssetOpsBench Issues and record the issue number/URL in the roadmap.
+Issue #632 was submitted manually after the connected GitHub integration returned `403 Resource not accessible by integration`. Maintainer direction was received on 2026-10-14. The focused implementation was then validated in the fork and submitted upstream as PR #636 on 2026-10-15. IBM-side Python Smoke and Secret Scan workflows completed successfully; DCO, Gitleaks, and TruffleHog OSS also passed. PR #636 is awaiting maintainer review.
