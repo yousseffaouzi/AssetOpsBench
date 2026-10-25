@@ -59,7 +59,10 @@ jobs:
             'mcp[cli]' \
             pendulum \
             python-dotenv \
-            pydantic
+            pydantic \
+            opentelemetry-api \
+            opentelemetry-sdk \
+            protobuf
 
       - name: Run smoke tests
-        run: .venv/bin/python -m pytest src/llm/tests src/servers/utilities/tests -q
+        run: .venv/bin/python -m pytest src/llm/tests src/servers/utilities/tests src/evaluation/tests src/observability/tests -q
