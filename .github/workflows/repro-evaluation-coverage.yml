@@ -1,0 +1,84 @@
+name: Evaluation coverage reproduction
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/repro-evaluation-coverage.yml'
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install minimal pinned dependencies
+        run: |
+          set -euo pipefail
+          UV_DIR="${RUNNER_TEMP}/uv-bin"
+          curl -LsSf https://astral.sh/uv/0.13.1/install.sh | env UV_UNMANAGED_INSTALL="${UV_DIR}" sh
+          "${UV_DIR}/uv" lock --check
+          "${UV_DIR}/uv" venv --python 3.12
+          "${UV_DIR}/uv" export --frozen --no-emit-project --output-file "${RUNNER_TEMP}/constraints.txt"
+          "${UV_DIR}/uv" pip install --python .venv/bin/python --constraint "${RUNNER_TEMP}/constraints.txt" pydantic
+      - name: Reproduce coverage semantics
+        run: |
+          .venv/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+
+          from evaluation import Evaluator, ScorerResult, scorers
+
+          # Synthetic software-test fixtures only; no benchmark data.
+          # Stub the score, not the loader, join, evaluator or report.
+          scorers.register("coverage-repro", lambda s, a, t: ScorerResult(
+              scorer="coverage-repro", passed=True, score=1.0))
+
+          def run_case(name, scenario_ids, trajectory_ids, selected, expected_count):
+              with TemporaryDirectory() as tmp:
+                  root = Path(tmp)
+                  scenarios = root / "scenarios.json"
+                  scenarios.write_text(json.dumps([
+                      {"id": sid, "text": "unit-test fixture"} for sid in scenario_ids
+                  ]), encoding="utf-8")
+                  trajectories = root / "trajectories"
+                  trajectories.mkdir()
+                  for i, sid in enumerate(trajectory_ids):
+                      (trajectories / f"run-{i}.json").write_text(json.dumps({
+                          "run_id": f"run-{i}", "scenario_id": sid, "runner": "fixture",
+                          "model": "fixture", "question": "unit-test fixture", "answer": "fixture"
+                      }), encoding="utf-8")
+                  report = Evaluator(default_scorer="coverage-repro").evaluate(
+                      trajectories_path=trajectories, scenarios_paths=[scenarios],
+                      scenario_ids=selected)
+                  selected_set = set(scenario_ids) if selected is None else set(scenario_ids) & selected
+                  matched = {r.scenario_id for r in report.results}
+                  assert len(report.results) == expected_count
+                  assert report.totals["scenarios"] == expected_count
+                  assert report.totals["scored"] == expected_count
+                  assert matched == set(trajectory_ids) & selected_set
+                  assert report.totals["pass_rate"] == (1.0 if expected_count else 0.0)
+                  assert "coverage" not in report.model_dump()
+                  print("COVERAGE_REPRO", json.dumps({
+                      "case": name, "selected_unique": len(selected_set),
+                      "matched_unique": len(matched), "missing": sorted(selected_set - matched),
+                      "unknown_trajectory_count": sum(s not in scenario_ids for s in trajectory_ids),
+                      "filtered_trajectory_count": sum(s in scenario_ids and s not in selected_set for s in trajectory_ids),
+                      "reported_totals": report.totals,
+                      "matched_ids": sorted(matched),
+                      "coverage": len(matched) / len(selected_set) if selected_set else None,
+                  }, sort_keys=True), flush=True)
+
+          run_case("complete", ["a", "b"], ["a", "b"], None, 2)
+          run_case("missing", ["a", "b", "c"], ["a", "b"], None, 2)
+          run_case("unknown", ["a", "b"], ["a", "x"], None, 1)
+          run_case("repeated", ["a", "b"], ["a", "a", "a"], None, 3)
+          run_case("filtered", ["a", "b", "c"], ["a", "c", "x"], {"a", "b"}, 1)
+          run_case("none_matched", ["a", "b"], ["x"], None, 0)
+          run_case("empty_selection", ["a", "b"], ["a"], set(), 0)
+          print("COVERAGE_REPRO: 7 observational checks passed")
+          PY
